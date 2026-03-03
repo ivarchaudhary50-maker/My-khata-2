@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Khata & Inventory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative pb-20 border-x border-gray-200">
+        <header class="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-10">
+            <h1 class="text-xl font-bold">My Digital Khata</h1>
+        </header>
+
+        <main id="app-content" class="p-4">
+            </main>
+
+        <nav class="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 flex justify-around p-3 text-gray-500 text-sm z-10">
+            <button onclick="navigate('dashboard')" class="flex flex-col items-center hover:text-blue-600 focus:text-blue-600 transition-colors">
+                <i data-lucide="layout-dashboard"></i>
+                <span class="mt-1">Dashboard</span>
+            </button>
+            <button onclick="navigate('ledger')" class="flex flex-col items-center hover:text-blue-600 focus:text-blue-600 transition-colors">
+                <i data-lucide="book-open"></i>
+                <span class="mt-1">Ledger</span>
+            </button>
+            <button onclick="navigate('inventory')" class="flex flex-col items-center hover:text-blue-600 focus:text-blue-600 transition-colors">
+                <i data-lucide="package"></i>
+                <span class="mt-1">Inventory</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        // App State & Data (With LocalStorage Save Feature)
+        let currentTab = 'dashboard';
+        
+        // Load saved data or use defaults
+        let inventory = JSON.parse(localStorage.getItem('khata_inventory')) || [
+            { id: 1, name: 'Blank Cotton Tees', qty: 150, price: 350 },
+            { id: 2, name: 'DTF Film Rolls', qty: 5, price: 2000 }
+        ];
+        
+        let transactions = JSON.parse(localStorage.getItem('khata_transactions')) || [
+            { id: 1, date: new Date().toLocaleDateString(), type: 'Income', amount: 8500, desc: 'Initial Balance' }
+        ];
+
+        // Save data function
+        function saveData() {
+            localStorage.setItem('khata_inventory', JSON.stringify(inventory));
+            localStorage.setItem('khata_transactions', JSON.stringify(transactions));
+        }
+
+        // --- ADD DATA FUNCTIONS ---
+        function addTransaction() {
+            let typeInput = prompt("Enter '1' for Income or '2' for Expense:");
+            let type = typeInput === '1' ? 'Income' : (typeInput === '2' ? 'Expense' : null);
+            if (!type) return alert("Action cancelled or invalid input.");
+            
+            let amount = parseFloat(prompt("Enter amount (Rs):"));
+            if (isNaN(amount) || amount <= 0) return alert("Invalid amount.");
+            
+            let desc = prompt("Enter description (e.g., T-shirt order, Ink purchase):");
+            if (!desc) return alert("Description required.");
+            
+            let date = new Date().toLocaleDateString();
+
+            transactions.unshift({ id: Date.now(), date: date, type: type, amount: amount, desc: desc }); // unshift adds to top
+            saveData();
+            navigate('ledger');
+        }
+
+        function addInventoryItem() {
+            let name = prompt("Enter item name (e.g., DTF Powder):");
+            if (!name) return alert("Action cancelled.");
+            
+            let qty = parseInt(prompt("Enter quantity:"));
+            if (isNaN(qty) || qty < 0) return alert("Invalid quantity.");
+            
+            let price = parseFloat(prompt("Enter estimated value per unit (Rs):"));
+            if (isNaN(price) || price < 0) return alert("Invalid price.");
+
+            inventory.push({ id: Date.now(), name: name, qty: qty, price: price });
+            saveData();
+            navigate('inventory');
+        }
+
+        // --- FEATURES ---
+        function exportLedgerToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Date,Type,Description,Amount (Rs)\n";
+            transactions.forEach(function(rowArray) {
+                let row = \`\${rowArray.date},\${rowArray.type},"\${rowArray.desc}",\${rowArray.amount}\`;
+                csvContent += row + "\\r\\n";
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Khata_Ledger.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function generateInvoice() {
+            const customerName = prompt("Enter customer name:");
+            if(!customerName) return; 
+            const amount = prompt("Enter total invoice amount (Rs):");
+            if(!amount) return;
+            const date = new Date().toLocaleDateString();
+            
+            const printWindow = window.open('', '_blank', 'height=800,width=600');
+            printWindow.document.write(\`
+                <html>
+                <head>
+                    <title>Invoice - \${customerName}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+                        .header { border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+                        .company-name { font-size: 24px; font-weight: bold; color: #2563eb; }
+                        .invoice-title { font-size: 20px; font-weight: bold; margin-top: 10px; color: #555;}
+                        .details { margin-bottom: 30px; line-height: 1.6; }
+                        .table { border-collapse: collapse; margin-top: 20px; width: 100%; }
+                        .table th, .table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                        .table th { background-color: #f8fafc; }
+                        .total { font-size: 18px; font-weight: bold; text-align: right; margin-top: 20px; }
+                        .footer { margin-top: 50px; text-align: center; color: #666; font-size: 14px; }
+                        @media print { button { display: none; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="company-name">Premium T-Shirt Prints</div>
+                        <div class="invoice-title">INVOICE</div>
+                    </div>
+                    <div class="details">
+                        <strong>Date:</strong> \${date}<br>
+                        <strong>Billed To:</strong> \${customerName}<br>
+                    </div>
+                    <table class="table">
+                        <tr>
+                            <th>Description</th>
+                            <th>Amount</th>
+                        </tr>
+                        <tr>
+                            <td>Custom Garment Printing Services</td>
+                            <td>Rs. \${parseFloat(amount).toLocaleString()}</td>
+                        </tr>
+                    </table>
+                    <div class="total">Total Due: Rs. \${parseFloat(amount).toLocaleString()}</div>
+                    <div class="footer">
+                        Thank you for your business!<br>
+                        <button onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 5px;">Print Invoice</button>
+                    </div>
+                </body>
+                </html>
+            \`);
+            printWindow.document.close();
+        }
+
+        // View Renderers
+        function renderDashboard() {
+            const totalIncome = transactions.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.amount, 0);
+            const totalExpense = transactions.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.amount, 0);
+            const balance = totalIncome - totalExpense;
+
+            return \`
+                <h2 class="text-lg font-bold mb-4 border-b pb-2 text-gray-80
